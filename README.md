@@ -10,6 +10,10 @@
 ---
 
 ## 📸 Aperçu
+<img width="1553" height="911" alt="{EEF55346-07EC-4968-9495-54123498A84F}" src="https://github.com/user-attachments/assets/a3e24c7b-b89c-496d-afbd-468177341332" />
+<img width="1235" height="583" alt="image" src="https://github.com/user-attachments/assets/2a69f552-0f5b-4cb1-9985-40c488310149" />
+
+
 
 NetGuard se connecte à l'API locale de ta Freebox (Freebox OS) et te donne une visibilité complète sur ton réseau :
 
