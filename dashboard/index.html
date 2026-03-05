@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard v2 — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#060a12;--s1:#0d1321;--s2:#131b2e;--s3:#1a2540;--bd:#1e2d4a;--bd2:#2a3f6a;--t1:#e8edf5;--t2:#8b9cc0;--t3:#4a5a80;--cyan:#00e5ff;--green:#00e676;--red:#ff5252;--amber:#ffab00;--blue:#448aff;--orange:#ff6e40;--purple:#b388ff;--pink:#ff80ab;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--t1);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.container{max-width:1200px;margin:0 auto;padding:20px 16px;}
+
+/* BG grid */
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(0,229,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.02) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0;}
+.container{position:relative;z-index:1;}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bd);}
+.hdr-icon{width:42px;height:42px;border-radius:10px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;}
+.hdr-icon .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg);animation:pulse 2s infinite;}
+.hdr-icon .dot.off{background:var(--red);animation:none;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hdr h1{font-size:16px;font-weight:700;letter-spacing:.04em;}
+.hdr h1 b{color:var(--cyan);}
+.hdr p{font-size:11px;color:var(--t3);}
+.hdr .live{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.hdr .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.hdr .live-t{font-size:11px;color:var(--green);letter-spacing:.1em;}
+.alert-badge{background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;margin-left:6px;cursor:pointer;}
+
+/* Stats row */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr);}}
+.st{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.st .ico{font-size:22px;}
+.st .val{font-size:18px;font-weight:700;}
+.st .lab{font-size:10px;color:var(--t3);margin-top:1px;}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:var(--s1);padding:3px;border-radius:10px;border:1px solid var(--bd);margin-bottom:16px;overflow-x:auto;}
+.tab{flex:1;min-width:80px;padding:9px 6px;text-align:center;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border:none;background:none;transition:.2s;white-space:nowrap;}
+.tab:hover{color:var(--t2);}
+.tab.on{background:var(--s3);color:var(--t1);border:1px solid var(--bd2);}
+
+/* Panel */
+.pnl{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:18px;min-height:300px;}
+
+/* Section title */
+.stl{font-size:11px;text-transform:uppercase;color:var(--t3);font-weight:700;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.stl .cnt{background:var(--s3);padding:2px 8px;border-radius:99px;font-size:10px;color:var(--cyan);}
+
+/* Device card */
+.dev{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid var(--bd);margin-bottom:5px;background:rgba(26,37,64,.3);transition:.2s;}
+.dev:hover{border-color:var(--bd2);background:rgba(26,37,64,.6);}
+.dev.off{opacity:.35;}
+.dev .ico{font-size:22px;width:32px;text-align:center;}
+.dev .inf{flex:1;min-width:0;}
+.dev .nm{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;}
+.dev .mt{font-size:11px;color:var(--t3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dev .acts{display:flex;gap:4px;opacity:0;transition:.2s;}
+.dev:hover .acts{opacity:1;}
+
+/* Pills */
+.pill{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid;font-weight:600;display:inline-block;}
+.pill.g{background:rgba(0,230,118,.08);color:var(--green);border-color:rgba(0,230,118,.15);}
+.pill.r{background:rgba(255,82,82,.08);color:var(--red);border-color:rgba(255,82,82,.15);}
+.pill.a{background:rgba(255,171,0,.08);color:var(--amber);border-color:rgba(255,171,0,.15);}
+.pill.b{background:rgba(68,138,255,.08);color:var(--blue);border-color:rgba(68,138,255,.15);}
+.pill.p{background:rgba(179,136,255,.08);color:var(--purple);border-color:rgba(179,136,255,.15);}
+.pill.s{background:rgba(74,90,128,.08);color:var(--t3);border-color:rgba(74,90,128,.15);}
+.dot-on{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;}
+
+/* Buttons */
+.btn{font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid;transition:.2s;font-weight:500;background:none;}
+.btn.cyan{color:var(--cyan);border-color:rgba(0,229,255,.2);}.btn.cyan:hover{background:rgba(0,229,255,.1);}
+.btn.red{color:var(--red);border-color:rgba(255,82,82,.2);}.btn.red:hover{background:rgba(255,82,82,.1);}
+.btn.green{color:var(--green);border-color:rgba(0,230,118,.2);}.btn.green:hover{background:rgba(0,230,118,.1);}
+.btn.amber{color:var(--amber);border-color:rgba(255,171,0,.2);}.btn.amber:hover{background:rgba(255,171,0,.1);}
+.btn.filled{background:rgba(0,229,255,.1);color:var(--cyan);border-color:rgba(0,229,255,.25);}
+
+/* Alert card */
+.alt{padding:10px 14px;border-radius:8px;border:1px solid;margin-bottom:5px;display:flex;gap:10px;align-items:flex-start;}
+.alt.danger{background:rgba(255,82,82,.06);border-color:rgba(255,82,82,.15);}
+.alt.warning{background:rgba(255,171,0,.06);border-color:rgba(255,171,0,.15);}
+.alt.info{background:rgba(68,138,255,.06);border-color:rgba(68,138,255,.15);}
+.alt .a-ico{font-size:18px;margin-top:2px;}
+.alt .a-t{font-size:13px;font-weight:500;}
+.alt .a-m{font-size:11px;color:var(--t2);margin-top:2px;}
+.alt .a-time{font-size:10px;color:var(--t3);margin-top:3px;}
+
+/* Scan result */
+.scan-r{padding:12px;border-radius:8px;border:1px solid var(--bd);margin-bottom:6px;background:rgba(26,37,64,.3);}
+.scan-r .ports{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.scan-r .port{font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid;}
+.scan-r .port.safe{border-color:rgba(0,230,118,.2);color:var(--green);background:rgba(0,230,118,.05);}
+.scan-r .port.risky{border-color:rgba(255,82,82,.2);color:var(--red);background:rgba(255,82,82,.05);}
+
+/* Network map */
+.net-map{position:relative;min-height:400px;background:rgba(6,10,18,.5);border-radius:10px;border:1px solid var(--bd);overflow:hidden;}
+.net-map canvas{width:100%;height:400px;}
+
+/* DNS log */
+.dns{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:rgba(26,37,64,.2);border:1px solid var(--bd);margin-bottom:3px;font-size:12px;}
+.dns .tm{color:var(--t3);font-size:10px;min-width:65px;}
+.dns .sr{color:var(--t2);min-width:110px;}
+.dns .qr{color:var(--cyan);flex:1;word-break:break-all;}
+
+/* Info grid */
+.ig{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+@media(max-width:600px){.ig{grid-template-columns:1fr;}}
+.ig-i{padding:12px;border-radius:8px;background:rgba(26,37,64,.3);border:1px solid var(--bd);}
+.ig-i .l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;}
+.ig-i .v{font-size:14px;font-weight:600;margin-top:3px;}
+
+/* BW Chart */
+.bw-chart{background:rgba(26,37,64,.3);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:12px;}
+.bw-chart canvas{width:100%;height:200px;}
+
+/* Scrollbar */
+.scroll{max-height:450px;overflow-y:auto;padding-right:4px;}
+.scroll::-webkit-scrollbar{width:5px;}
+.scroll::-webkit-scrollbar-track{background:transparent;}
+.scroll::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
+
+/* Loading / Error */
+.ld{text-align:center;padding:40px;color:var(--t3);}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{background:rgba(255,82,82,.06);border:1px solid rgba(255,82,82,.15);border-radius:10px;padding:20px;text-align:center;color:var(--red);}
+
+/* Speed test */
+.speed{text-align:center;padding:30px;}
+.speed .gauge{font-size:48px;font-weight:700;margin:16px 0 4px;}
+.speed .unit{font-size:14px;color:var(--t3);}
+.speed-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;}
+.speed-card{background:rgba(26,37,64,.3);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center;}
+.speed-card .sv{font-size:28px;font-weight:700;margin-bottom:4px;}
+.speed-card .sl{font-size:11px;color:var(--t3);}
+
+/* Export bar */
+.exp-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+
+/* Footer */
+.ftr{text-align:center;margin-top:16px;font-size:10px;color:var(--t3);padding:8px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hdr">
+    <div class="hdr-icon">🔒<span class="dot" id="sDot"></span></div>
+    <div>
+      <h1 class="mono">NetGuard<b>.</b>Dashboard <span style="font-size:11px;color:var(--t3);font-weight:400">v2.1</span></h1>
+      <p id="hSub">Connexion...</p>
+    </div>
+    <div class="live">
+      <span class="live-dot" id="lDot"></span>
+      <span class="live-t mono" id="lTxt">CONNECTING</span>
+      <span class="alert-badge" id="alertBadge" onclick="switchTab('alerts')" style="display:none">0</span>
+    </div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="st"><span class="ico">📡</span><div><div class="val mono" id="sDevices">-</div><div class="lab">En ligne</div></div></div>
+    <div class="st"><span class="ico">▼</span><div><div class="val mono" style="color:var(--blue)" id="sDown">-</div><div class="lab">Download</div></div></div>
+    <div class="st"><span class="ico">▲</span><div><div class="val mono" style="color:var(--orange)" id="sUp">-</div><div class="lab">Upload</div></div></div>
+    <div class="st"><span class="ico">🔔</span><div><div class="val mono" style="color:var(--amber)" id="sAlerts">0</div><div class="lab">Alertes</div></div></div>
+    <div class="st"><span class="ico">🛡️</span><div><div class="val mono" style="color:var(--red)" id="sIntruders">0</div><div class="lab">Intrus</div></div></div>
+  </div>
+
+  <div class="tabs" id="tabBar">
+    <button class="tab on" onclick="switchTab('devices')">📡 Appareils</button>
+    <button class="tab" onclick="switchTab('map')">🗺️ Carte</button>
+    <button class="tab" onclick="switchTab('alerts')">🔔 Alertes</button>
+    <button class="tab" onclick="switchTab('scan')">🔍 Scan</button>
+    <button class="tab" onclick="switchTab('dns')">🌐 DNS</button>
+    <button class="tab" onclick="switchTab('sites')">📋 Sites</button>
+    <button class="tab" onclick="switchTab('bandwidth')">📊 Bande P.</button>
+    <button class="tab" onclick="switchTab('speedtest')">⚡ Speed</button>
+    <button class="tab" onclick="switchTab('system')">⚙️ Système</button>
+    <button class="tab" onclick="switchTab('export')">📥 Export</button>
+  </div>
+
+  <div class="pnl" id="content">
+    <div class="ld"><div class="spin"></div><p style="margin-top:10px">Connexion à la Freebox...</p></div>
+  </div>
+
+  <div class="ftr mono">NetGuard v2.1 — API Freebox OS · Logs 48h · Données 100% privées</div>
+</div>
+
+<script>
+const API='http://localhost:8765/api';
+let tab='devices',data_cache={},chartCanvas=null;
+
+// Utils
+const fmtB=b=>{if(!b||b===0)return'0 B';if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(2)+' GB';};
+const fmtR=r=>{if(!r)return'0 b/s';const b=r*8;if(b<1e3)return b+' b/s';if(b<1e6)return(b/1e3).toFixed(1)+' Kb/s';if(b<1e9)return(b/1e6).toFixed(1)+' Mb/s';return(b/1e9).toFixed(2)+' Gb/s';};
+const ago=ts=>{if(!ts)return'';const s=Math.floor(Date.now()/1000-ts);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'min';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'j';};
+const dico={workstation:'🖥️',laptop:'💻',smartphone:'📱',tablet:'📋',printer:'🖨️',vg_console:'🎮',television:'📺',nas:'💾',ip_camera:'📷',multimedia_device:'🔊',car:'🚗',networking_device:'🌐',gateway:'🌐',other:'❓'};
+const dIco=t=>dico[t]||'❓';
+const ts2t=ts=>new Date(ts*1000).toLocaleTimeString('fr-FR');
+const ts2dt=ts=>new Date(ts*1000).toLocaleString('fr-FR');
+
+async function F(ep){try{const r=await fetch(`${API}/${ep}`);if(!r.ok)throw new Error(r.status);return await r.json();}catch(e){console.error(ep,e);return null;}}
+async function P(ep){try{const r=await fetch(`${API}/${ep}`,{method:'POST'});return await r.json();}catch(e){console.error(ep,e);return null;}}
+
+function switchTab(t){
+  tab=t;
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.classList.toggle('on',b.textContent.toLowerCase().includes(
+      {devices:'appareils',map:'carte',alerts:'alertes',scan:'scan',dns:'dns',sites:'sites',bandwidth:'bande',speedtest:'speed',system:'système',export:'export'}[t]||t
+    ));
+  });
+  refresh();
+}
+
+// ─── RENDERERS ───
+
+function renderDevices(devs){
+  if(!devs?.length)return'<div class="ld">Aucun appareil</div>';
+  const online=devs.filter(d=>d.connected),offline=devs.filter(d=>!d.connected);
+  return`
+    <div class="stl mono">Appareils connectés <span class="cnt">${online.length}</span></div>
+    <div class="scroll">${online.map(d=>`
+      <div class="dev">
+        <span class="ico">${dIco(d.type)}</span>
+        <div class="inf">
+          <div class="nm">${d.name||'Inconnu'} <span class="dot-on"></span>
+            ${d.trusted?'<span class="pill g">APPROUVÉ</span>':'<span class="pill a">NON VÉRIFIÉ</span>'}
+          </div>
+          <div class="mt mono">${d.ip||'—'} · ${d.mac} ${d.vendor?' · '+d.vendor:''}</div>
+        </div>
+        <div class="acts">
+          <button class="btn cyan" onclick="P('scan/${d.mac}').then(()=>switchTab('scan'))">🔍 Scan</button>
+          ${d.trusted
+            ?`<button class="btn red" onclick="P('known_devices/${d.mac}/untrust').then(refresh)">✗</button>`
+            :`<button class="btn green" onclick="P('known_devices/${d.mac}/trust').then(refresh)">✓ Approuver</button>`}
+        </div>
+      </div>
+    `).join('')}
+    ${offline.length?`
+      <div class="stl mono" style="margin-top:16px">Hors ligne <span class="cnt">${offline.length}</span></div>
+      ${offline.slice(0,20).map(d=>`
+        <div class="dev off">
+          <span class="ico">${dIco(d.type)}</span>
+          <div class="inf">
+            <div class="nm">${d.name||'Inconnu'} <span class="pill s">HORS LIGNE</span></div>
+            <div class="mt mono">${d.ip||'—'} · ${d.mac} · vu il y a ${ago(d.last_seen)}</div>
+          </div>
+        </div>
+      `).join('')}
+    `:''}
+    </div>`;
+}
+
+function renderMap(devs){
+  if(!devs?.length)return'<div class="ld">Aucun appareil</div>';
+  const online=devs.filter(d=>d.connected);
+  const types={};
+  online.forEach(d=>{const t=d.type||'other';if(!types[t])types[t]=[];types[t].push(d);});
+
+  return`
+    <div class="stl mono">Carte du réseau</div>
+    <div style="position:relative;min-height:420px;background:rgba(6,10,18,.5);border-radius:10px;border:1px solid var(--bd);padding:20px;overflow:auto;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="display:inline-block;background:var(--s3);border:2px solid var(--cyan);border-radius:12px;padding:12px 24px;">
+          <div style="font-size:24px;">🌐</div>
+          <div class="mono" style="font-size:12px;color:var(--cyan);margin-top:4px;">Freebox Pop</div>
+          <div class="mono" style="font-size:10px;color:var(--t3);">192.168.1.1</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;">
+        ${Object.entries(types).map(([type,devices])=>`
+          <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;min-width:180px;">
+            <div style="font-size:11px;color:var(--t3);text-transform:uppercase;margin-bottom:8px;text-align:center;">${type} (${devices.length})</div>
+            ${devices.map(d=>`
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--s1);margin-bottom:4px;border:1px solid var(--bd);">
+                <span style="font-size:16px;">${dIco(d.type)}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+                  <div class="mono" style="font-size:9px;color:var(--t3);">${d.ip||'—'}</div>
+                </div>
+                <span class="dot-on"></span>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function renderAlerts(alts){
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="stl mono" style="margin:0;">Alertes <span class="cnt">${alts?.length||0}</span></div>
+      <button class="btn cyan" onclick="P('alerts/read').then(refresh)">✓ Tout marquer lu</button>
+    </div>
+    <div class="scroll">
+      ${alts?.length?alts.map(a=>`
+        <div class="alt ${a.level}">
+          <span class="a-ico">${a.level==='danger'?'🔴':a.level==='warning'?'🟡':'🔵'}</span>
+          <div style="flex:1">
+            <div class="a-t">${a.title}</div>
+            <div class="a-m">${a.message}</div>
+            <div class="a-time mono">${ts2dt(a.timestamp)}</div>
+          </div>
+          ${a.read?'':'<span class="pill a">NOUVEAU</span>'}
+        </div>
+      `).join(''):'<div class="ld">Aucune alerte</div>'}
+    </div>`;
+}
+
+function renderScan(results){
+  const entries=results?Object.entries(results):[];
+  const risky=[21,23,135,139,445,3389,5900,5901,6379,27017];
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="stl mono" style="margin:0;">Scan de vulnérabilités <span class="cnt">${entries.length} appareils</span></div>
+      <button class="btn red" onclick="P('scan/all').then(()=>{document.getElementById('content').innerHTML='<div class=ld><div class=spin></div><p style=margin-top:10px>Scan en cours... (peut prendre 1-2 min)</p></div>';setTimeout(refresh,15000);})">🔍 Scanner tout le réseau</button>
+    </div>
+    <div class="scroll">
+      ${entries.length?entries.map(([mac,r])=>`
+        <div class="scan-r">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-size:13px;font-weight:500;">${r.ip}</span>
+              <span class="mono" style="font-size:11px;color:var(--t3);margin-left:8px;">${mac}</span>
+            </div>
+            <div>
+              <span class="pill ${r.risk_level==='high'?'r':r.risk_level==='medium'?'a':'g'}">
+                RISQUE ${r.risk_level==='high'?'ÉLEVÉ':r.risk_level==='medium'?'MOYEN':'FAIBLE'}
+              </span>
+              <span style="font-size:11px;color:var(--t3);margin-left:8px;">${r.total_open} ports ouverts</span>
+            </div>
+          </div>
+          <div class="ports">
+            ${r.ports.map(p=>`
+              <span class="port mono ${risky.includes(p.port)?'risky':'safe'}">${p.port}/${p.service}</span>
+            `).join('')}
+          </div>
+          <div style="font-size:10px;color:var(--t3);margin-top:6px;" class="mono">Scanné ${ts2dt(r.timestamp)}</div>
+        </div>
+      `).join(''):'<div class="ld"><p>Aucun scan effectué</p><p style="font-size:12px;color:var(--t3);margin-top:8px">Cliquez sur "Scanner tout le réseau" ou scannez un appareil individuel depuis l\'onglet Appareils</p></div>'}
+    </div>`;
+}
+
+function renderDNS(logs){
+  if(!logs?.length)return`
+    <div class="stl mono">Requêtes DNS</div>
+    <div class="ld"><p>Aucune requête DNS capturée</p>
+    <p style="font-size:11px;color:var(--t3);margin-top:6px">Lancez avec <span class="mono" style="color:var(--cyan)">sudo python3 netguard_server.py</span></p></div>`;
+  const recent=logs.slice(-150).reverse();
+  return`
+    <div class="stl mono">Requêtes DNS <span class="cnt">${logs.length} total</span></div>
+    <div class="scroll">${recent.map(l=>`
+      <div class="dns">
+        <span class="tm mono">${ts2t(l.timestamp)}</span>
+        <span class="sr mono">${l.src_ip}</span>
+        <span class="qr mono">${l.query}</span>
+        <span class="pill b">${l.type}</span>
+      </div>
+    `).join('')}</div>`;
+}
+
+function renderBandwidth(bw,history){
+  let chartHTML='';
+  if(history?.length>1){
+    const w=800,h=180,pad=40;
+    const maxDown=Math.max(...history.map(p=>p.rate_down))||1;
+    const maxUp=Math.max(...history.map(p=>p.rate_up))||1;
+    const maxVal=Math.max(maxDown,maxUp);
+    const pts=history.length;
+    const xStep=(w-pad*2)/(pts-1||1);
+
+    let downPath=`M ${pad} ${h-pad-((history[0].rate_down/maxVal)*(h-pad*2))}`;
+    let upPath=`M ${pad} ${h-pad-((history[0].rate_up/maxVal)*(h-pad*2))}`;
+    history.forEach((p,i)=>{
+      if(i===0)return;
+      const x=pad+i*xStep;
+      downPath+=` L ${x} ${h-pad-((p.rate_down/maxVal)*(h-pad*2))}`;
+      upPath+=` L ${x} ${h-pad-((p.rate_up/maxVal)*(h-pad*2))}`;
+    });
+
+    chartHTML=`
+      <div class="bw-chart">
+        <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;">
+          <span style="color:var(--blue)">▼ Download</span>
+          <span style="color:var(--orange)">▲ Upload</span>
+          <span style="color:var(--t3);margin-left:auto;">Max: ${fmtR(maxVal)}</span>
+        </div>
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:200px;">
+          <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="var(--bd)" stroke-width="1"/>
+          <line x1="${pad}" y1="${pad}" x2="${w-pad}" y2="${pad}" stroke="var(--bd)" stroke-width="0.5" stroke-dasharray="4"/>
+          <line x1="${pad}" y1="${h/2}" x2="${w-pad}" y2="${h/2}" stroke="var(--bd)" stroke-width="0.5" stroke-dasharray="4"/>
+          <path d="${downPath}" fill="none" stroke="var(--blue)" stroke-width="2"/>
+          <path d="${upPath}" fill="none" stroke="var(--orange)" stroke-width="1.5"/>
+        </svg>
+      </div>`;
+  }
+
+  return`
+    <div class="stl mono">Bande passante</div>
+    ${chartHTML}
+    <div class="ig">
+      <div class="ig-i"><div class="l">Download actuel</div><div class="v mono" style="color:var(--blue)">▼ ${fmtR(bw?.rate_down)}</div></div>
+      <div class="ig-i"><div class="l">Upload actuel</div><div class="v mono" style="color:var(--orange)">▲ ${fmtR(bw?.rate_up)}</div></div>
+      <div class="ig-i"><div class="l">Débit max ↓</div><div class="v mono">${fmtR(bw?.bandwidth_down)}</div></div>
+      <div class="ig-i"><div class="l">Débit max ↑</div><div class="v mono">${fmtR(bw?.bandwidth_up)}</div></div>
+      <div class="ig-i"><div class="l">Total téléchargé</div><div class="v mono">${fmtB(bw?.bytes_down)}</div></div>
+      <div class="ig-i"><div class="l">Total envoyé</div><div class="v mono">${fmtB(bw?.bytes_up)}</div></div>
+      <div class="ig-i"><div class="l">État</div><div class="v"><span class="pill ${bw?.state==='up'?'g':'r'}">${bw?.state==='up'?'CONNECTÉ':bw?.state||'—'}</span></div></div>
+      <div class="ig-i"><div class="l">IP publique</div><div class="v mono" style="font-size:12px">${bw?.ipv4||'—'}</div></div>
+    </div>`;
+}
+
+function renderSpeedTest(){
+  return`
+    <div class="stl mono">Speed Test</div>
+    <div class="speed" id="speedContent">
+      <p style="color:var(--t2);margin-bottom:16px;">Testez la vitesse de votre connexion internet</p>
+      <button class="btn filled" style="font-size:14px;padding:12px 32px;" onclick="runSpeedTest()">⚡ Lancer le Speed Test</button>
+      <p style="font-size:11px;color:var(--t3);margin-top:12px;">Durée estimée : 15-30 secondes</p>
+    </div>`;
+}
+
+async function runSpeedTest(){
+  document.getElementById('speedContent').innerHTML=`
+    <div class="spin" style="width:40px;height:40px;border-width:3px;"></div>
+    <p style="margin-top:16px;color:var(--t2);">Test en cours...</p>
+    <p style="font-size:11px;color:var(--t3);margin-top:4px;">Mesure du ping, download et upload</p>`;
+
+  const r=await P('speedtest');
+  if(r){
+    document.getElementById('speedContent').innerHTML=`
+      <div class="speed-grid">
+        <div class="speed-card">
+          <div class="sv mono" style="color:var(--green)">${r.ping||'—'}</div>
+          <div class="sl">PING (ms)</div>
+        </div>
+        <div class="speed-card">
+          <div class="sv mono" style="color:var(--blue)">${r.download||'—'}</div>
+          <div class="sl">DOWNLOAD (Mbps)</div>
+        </div>
+        <div class="speed-card">
+          <div class="sv mono" style="color:var(--orange)">${r.upload||'—'}</div>
+          <div class="sl">UPLOAD (Mbps)</div>
+        </div>
+      </div>
+      <p class="mono" style="font-size:10px;color:var(--t3);margin-top:16px;">${ts2dt(r.timestamp)}</p>
+      <button class="btn cyan" style="margin-top:12px;" onclick="runSpeedTest()">🔄 Relancer</button>`;
+  }
+}
+
+function renderSystem(info){
+  if(!info)return'<div class="ld">Indisponible</div>';
+  const tc=info.temp_cpub?(info.temp_cpub/10).toFixed(0):'—';
+  const tcol=info.temp_cpub>800?'var(--red)':info.temp_cpub>650?'var(--amber)':'var(--green)';
+  return`
+    <div class="stl mono">Système Freebox</div>
+    <div class="ig">
+      <div class="ig-i"><div class="l">Modèle</div><div class="v">${info.board_name||info.model_info?.pretty_name||'Freebox'}</div></div>
+      <div class="ig-i"><div class="l">Firmware</div><div class="v mono">${info.firmware_version||'—'}</div></div>
+      <div class="ig-i"><div class="l">Température CPU</div><div class="v mono" style="color:${tcol}">${tc}°C</div></div>
+      <div class="ig-i"><div class="l">Uptime</div><div class="v mono">${info.uptime||'—'}</div></div>
+      <div class="ig-i"><div class="l">Série</div><div class="v mono" style="font-size:11px">${info.serial||'—'}</div></div>
+      <div class="ig-i"><div class="l">MAC</div><div class="v mono" style="font-size:11px">${info.mac||'—'}</div></div>
+    </div>`;
+}
+
+function renderExport(){
+  return`
+    <div class="stl mono">Exporter les données</div>
+    <div class="ig">
+      <div class="ig-i" style="cursor:pointer" onclick="window.open(API+'/export/devices/csv')">
+        <div class="l">📡 Appareils</div>
+        <div class="v" style="font-size:13px">Liste complète des appareils (CSV)</div>
+        <div class="btn cyan" style="margin-top:8px">📥 Télécharger</div>
+      </div>
+      <div class="ig-i" style="cursor:pointer" onclick="window.open(API+'/export/alerts/csv')">
+        <div class="l">🔔 Alertes</div>
+        <div class="v" style="font-size:13px">Journal des alertes (CSV)</div>
+        <div class="btn cyan" style="margin-top:8px">📥 Télécharger</div>
+      </div>
+      <div class="ig-i" style="cursor:pointer" onclick="window.open(API+'/export/scan/csv')">
+        <div class="l">🔍 Scans</div>
+        <div class="v" style="font-size:13px">Résultats des scans de ports (CSV)</div>
+        <div class="btn cyan" style="margin-top:8px">📥 Télécharger</div>
+      </div>
+      <div class="ig-i">
+        <div class="l">📊 Données brutes API</div>
+        <div class="v" style="font-size:13px">Accès direct aux endpoints</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--t3);" class="mono">
+          <a href="${API}/devices" target="_blank" style="color:var(--cyan)">/api/devices</a> ·
+          <a href="${API}/bandwidth" target="_blank" style="color:var(--cyan)">/api/bandwidth</a> ·
+          <a href="${API}/alerts" target="_blank" style="color:var(--cyan)">/api/alerts</a> ·
+          <a href="${API}/scan/results" target="_blank" style="color:var(--cyan)">/api/scan/results</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderSites(globalDomains, perDevice){
+  let siteViewMode = 'global';
+
+  // Vue globale
+  let globalHTML = '';
+  if(globalDomains?.length){
+    globalHTML = globalDomains.slice(0,100).map((d,i)=>`
+      <div class="dev" style="padding:8px 14px;">
+        <span class="mono" style="font-size:12px;color:var(--t3);min-width:28px;text-align:right;">#${i+1}</span>
+        <div class="inf" style="flex:1">
+          <div class="nm">
+            <span class="mono" style="color:var(--cyan)">${d.domain}</span>
+            <span class="pill b">${d.count} req.</span>
+          </div>
+          <div class="mt">${d.device_count} appareil${d.device_count>1?'s':''}: ${d.devices.slice(0,4).join(', ')}${d.devices.length>4?' ...':''} · vu ${ago(d.last_seen)}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    globalHTML = '<div class="ld"><p>Aucune donnée DNS agrégée</p><p style="font-size:11px;color:var(--t3);margin-top:6px">Lancez avec <span class="mono" style="color:var(--cyan)">sudo python3 netguard_server.py</span> pour capturer le DNS</p></div>';
+  }
+
+  // Vue par appareil
+  let deviceHTML = '';
+  if(perDevice && Object.keys(perDevice).length){
+    deviceHTML = Object.entries(perDevice).map(([key, dev])=>{
+      const topDomains = dev.domains.slice(0,15);
+      const barMax = topDomains[0]?.count || 1;
+      return `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 12px;background:var(--s2);border-radius:8px;border:1px solid var(--bd);">
+            <span style="font-size:16px;">📡</span>
+            <span style="font-weight:600;font-size:13px;">${dev.device_name}</span>
+            <span class="pill b">${dev.total_queries} requêtes</span>
+            <span class="pill p">${dev.unique_domains} domaines</span>
+          </div>
+          <div style="display:grid;gap:3px;">
+            ${topDomains.map(d=>`
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:6px;background:rgba(26,37,64,.2);border:1px solid var(--bd);">
+                <span class="mono" style="font-size:12px;color:var(--cyan);min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.domain}</span>
+                <div style="flex:1;height:6px;background:var(--s1);border-radius:3px;overflow:hidden;">
+                  <div style="height:100%;width:${Math.max(2,(d.count/barMax)*100)}%;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:3px;"></div>
+                </div>
+                <span class="mono" style="font-size:11px;color:var(--t2);min-width:50px;text-align:right;">${d.count}</span>
+                <span style="font-size:10px;color:var(--t3);">${ago(d.last_seen)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="stl mono" style="margin:0;">Agrégateur de connexions <span class="cnt">Sites visités (48h)</span></div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn cyan" id="btnGlobal" onclick="document.getElementById('viewGlobal').style.display='block';document.getElementById('viewDevice').style.display='none';this.classList.add('filled');document.getElementById('btnDevice').classList.remove('filled');">🌐 Vue globale</button>
+        <button class="btn cyan" id="btnDevice" onclick="document.getElementById('viewDevice').style.display='block';document.getElementById('viewGlobal').style.display='none';this.classList.add('filled');document.getElementById('btnGlobal').classList.remove('filled');">📡 Par appareil</button>
+        <a class="btn amber" href="${API}/export/dns/csv" target="_blank">📥 CSV</a>
+      </div>
+    </div>
+    <div id="viewGlobal" class="scroll">${globalHTML}</div>
+    <div id="viewDevice" class="scroll" style="display:none">${deviceHTML}</div>
+  `;
+}
+
+// ─── REFRESH ───
+async function refresh(){
+  const ct=document.getElementById('content');
+  try{
+    const st=await F('status');
+    document.getElementById('sDot').className=st?.connected?'dot':'dot off';
+    document.getElementById('lDot').style.background=st?.connected?'var(--green)':'var(--red)';
+    document.getElementById('lTxt').textContent=st?.connected?'LIVE':'OFFLINE';
+    document.getElementById('lTxt').style.color=st?.connected?'var(--green)':'var(--red)';
+    document.getElementById('hSub').textContent=st?.connected?`Freebox Pop — Surveillance active (logs ${st?.retention_h||48}h)`:'Déconnecté';
+
+    const[devs,bw,alts,unread]=await Promise.all([F('devices'),F('bandwidth'),F('alerts'),F('alerts/unread')]);
+    if(devs)document.getElementById('sDevices').textContent=devs.filter(d=>d.connected).length;
+    if(bw){document.getElementById('sDown').textContent=fmtR(bw.rate_down);document.getElementById('sUp').textContent=fmtR(bw.rate_up);}
+    if(alts)document.getElementById('sAlerts').textContent=alts.length;
+    if(unread){
+      const b=document.getElementById('alertBadge');
+      if(unread.count>0){b.style.display='inline';b.textContent=unread.count;}else{b.style.display='none';}
+    }
+    if(devs){const intr=devs.filter(d=>d.connected&&!d.trusted);document.getElementById('sIntruders').textContent=intr.length;}
+
+    switch(tab){
+      case'devices':ct.innerHTML=renderDevices(devs);break;
+      case'map':ct.innerHTML=renderMap(devs);break;
+      case'alerts':ct.innerHTML=renderAlerts(alts);break;
+      case'scan':const sr=await F('scan/results');ct.innerHTML=renderScan(sr);break;
+      case'dns':const dns=await F('dns/log');ct.innerHTML=renderDNS(dns);break;
+      case'sites':const agg=await F('dns/aggregated/global');const aggDev=await F('dns/aggregated');ct.innerHTML=renderSites(agg,aggDev);break;
+      case'bandwidth':const bwh=await F('bandwidth/history');ct.innerHTML=renderBandwidth(bw,bwh);break;
+      case'speedtest':if(!ct.querySelector('.speed-grid'))ct.innerHTML=renderSpeedTest();break;
+      case'system':const sys=await F('system');ct.innerHTML=renderSystem(sys);break;
+      case'export':ct.innerHTML=renderExport();break;
+    }
+  }catch(e){
+    ct.innerHTML=`<div class="err"><p style="font-size:15px;margin-bottom:6px">⚠️ Serveur NetGuard inaccessible</p><p style="font-size:12px;opacity:.7">Vérifiez que le serveur tourne sur http://localhost:8765</p></div>`;
+  }
+}
+
+refresh();
+setInterval(refresh,5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+requests>=2.28.0
+flask>=2.3.0
+flask-cors>=4.0.0
+scapy>=2.5.0  # Optionnel - pour la capture DNS (nécessite admin/root)
