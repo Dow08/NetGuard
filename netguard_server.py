@@ -95,23 +95,48 @@ def add_alert(lvl,title,msg,mac=None):
 
 def start_dns_sniffer():
     try:
-        from scapy.all import sniff,DNS,DNSQR,IP
+        from scapy.all import sniff,DNS,DNSQR,DNSRR,IP
         log.info("🔍 Sniffer DNS démarré")
         def cb(pkt):
-            if pkt.haslayer(DNS) and pkt.haslayer(DNSQR):
+            if not pkt.haslayer(DNS):return
+            src=pkt[IP].src if pkt.haslayer(IP) else"?"
+            dst=pkt[IP].dst if pkt.haslayer(IP) else"?"
+            now=time.time()
+
+            # Capturer les REQUÊTES DNS (qr=0)
+            if pkt[DNS].qr==0 and pkt.haslayer(DNSQR):
                 q=pkt[DNSQR].qname.decode(errors="ignore").rstrip(".")
-                src=pkt[IP].src if pkt.haslayer(IP) else"?"
-                now=time.time()
                 if q.endswith(".local")or q.endswith(".arpa")or"."not in q:return
+                # Ignorer les requêtes vers la box elle-même (pas intéressant)
+                if q in("mafreebox.freebox.fr","freebox-server.local"):return
+
                 with dns_lock:
-                    dns_log.append({"timestamp":now,"src_ip":src,"query":q,"type":"A"if pkt[DNSQR].qtype==1 else"AAAA"if pkt[DNSQR].qtype==28 else str(pkt[DNSQR].qtype)})
+                    dns_log.append({"timestamp":now,"src_ip":src,"dst_ip":dst,"query":q,
+                        "type":"A"if pkt[DNSQR].qtype==1 else"AAAA"if pkt[DNSQR].qtype==28 else str(pkt[DNSQR].qtype)})
                     if len(dns_log)>MAX_DNS:dns_log.pop(0)
+
+                # Agrégation
                 parts=q.split(".");domain=".".join(parts[-2:])if len(parts)>=2 else q
                 with ipm_lock:dk=ip_to_mac.get(src,src)
                 with dns_agg_lock:
                     a=dns_agg[dk][domain];a["count"]=a.get("count",0)+1
                     if not a.get("first"):a["first"]=now
                     a["last"]=now;a["device_name"]=ip_to_name.get(src,src);a["device_ip"]=src
+
+            # Capturer aussi les RÉPONSES DNS (qr=1) pour voir les domaines résolus
+            elif pkt[DNS].qr==1 and pkt.haslayer(DNSQR):
+                q=pkt[DNSQR].qname.decode(errors="ignore").rstrip(".")
+                if q.endswith(".local")or q.endswith(".arpa")or"."not in q:return
+                if q in("mafreebox.freebox.fr","freebox-server.local"):return
+                # La réponse va vers un appareil local — dst est l'appareil
+                with dns_lock:
+                    # Éviter les doublons: ne pas re-logger si on a déjà la requête
+                    if not any(d.get("query")==q and abs(d.get("timestamp",0)-now)<2 for d in dns_log[-20:]):
+                        dns_log.append({"timestamp":now,"src_ip":dst,"dst_ip":src,"query":q,
+                            "type":"A"if pkt[DNSQR].qtype==1 else"AAAA"if pkt[DNSQR].qtype==28 else str(pkt[DNSQR].qtype)})
+                        if len(dns_log)>MAX_DNS:dns_log.pop(0)
+
+        # Capturer tout le trafic DNS (requêtes ET réponses)
         sniff(filter="udp port 53",prn=cb,store=0)
     except ImportError:log.warning("⚠️ scapy manquant")
     except PermissionError:log.warning("⚠️ sudo requis pour DNS")
@@ -305,6 +330,46 @@ def api_fw():return jsonify(fbx.get_fw_rules())
 def api_par():return jsonify(fbx.get_parental_filter())
 @app.route("/api/wifi/stations")
 def api_ws():return jsonify(fbx.get_wifi_stations())
+
+# ─── BANDE PASSANTE PAR APPAREIL (wifi stations rx/tx) ───
+device_bw_cache={}
+device_bw_prev={}
+device_bw_lock=threading.Lock()
+
+@app.route("/api/devices/bandwidth")
+def api_dev_bw():
+    """Bande passante par appareil via wifi/stations (rx_rate/tx_rate + calcul delta bytes)"""
+    stations=fbx.get_wifi_stations()
+    result={}
+    now=time.time()
+    if stations:
+        for s in stations:
+            mac=s.get("mac","")
+            hostname=s.get("hostname","")
+            if not mac:continue
+            rx_rate=s.get("rx_rate",0)  # bytes/s entrant (station→box)
+            tx_rate=s.get("tx_rate",0)  # bytes/s sortant (box→station)
+            rx_bytes=s.get("rx_bytes",0)
+            tx_bytes=s.get("tx_bytes",0)
+            signal=s.get("signal",0)
+            with device_bw_lock:
+                prev=device_bw_prev.get(mac,{})
+                dt=now-prev.get("ts",now)
+                # Calculer le débit moyen sur l'intervalle si rx_rate est 0
+                if dt>0 and dt<30:
+                    drx=max(0,rx_bytes-prev.get("rx",0))
+                    dtx=max(0,tx_bytes-prev.get("tx",0))
+                    calc_rx=drx/dt if rx_rate==0 else rx_rate
+                    calc_tx=dtx/dt if tx_rate==0 else tx_rate
+                else:
+                    calc_rx=rx_rate
+                    calc_tx=tx_rate
+                device_bw_prev[mac]={"rx":rx_bytes,"tx":tx_bytes,"ts":now}
+            # Trouver le nom depuis known_devices
+            name=known_devices.get(mac,{}).get("name",hostname or mac)
+            result[mac]={"name":name,"hostname":hostname,"rx_rate":round(calc_rx),"tx_rate":round(calc_tx),
+                "rx_bytes":rx_bytes,"tx_bytes":tx_bytes,"signal":signal,"mac":mac}
+    return jsonify(result)
 @app.route("/api/alerts")
 def api_alts():
     with alerts_lock:return jsonify(list(reversed(alerts[-100:])))

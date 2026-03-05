@@ -53,7 +53,7 @@ NetGuard se connecte à l'API locale de ta Freebox (Freebox OS) et te donne une 
 ### 1. Cloner le repo
 
 ```bash
-git clone https://github.com/TON_USERNAME/netguard.git
+git clone https://github.com/DOW08/netguard.git
 cd netguard
 ```
 
